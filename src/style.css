@@ -1,0 +1,22 @@
+:root {
+  --brand: #1a237e;
+}
+* { box-sizing: border-box; }
+html, body, #app { height: 100%; margin: 0; }
+body {
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+  background: #f5f6fa;
+  color: #303133;
+}
+.page { max-width: 1080px; margin: 0 auto; padding: 20px 16px 60px; }
+.brand-bar {
+  background: var(--brand);
+  color: #fff;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.brand-bar .title { font-size: 18px; font-weight: 600; }
+.muted { color: #909399; font-size: 12px; }
+.mt { margin-top: 12px; }
