@@ -1,0 +1,93 @@
+# ============================================================
+# 公共配置（不包含任何密钥）。本机密钥在 application-local.yml。
+# 启动默认激活 local profile。
+# ============================================================
+spring:
+  application:
+    name: interview
+  profiles:
+    active: local
+  jackson:
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+  jpa:
+    hibernate:
+      ddl-auto: validate          # 表结构一律由 backend/db/schema.sql 维护，禁止自动改表
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
+  ai:
+    # 真实 DeepSeek：OpenAI 兼容协议，模型/密钥默认走环境变量，密钥只放 local 配置。
+    # mock-enabled=false 时由 DeepSeekAIService 消费（docs/07 §3）。
+    openai:
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${DEEPSEEK_API_KEY:}
+      chat:
+        options:
+          model: ${DEEPSEEK_MODEL:deepseek-chat}
+          temperature: 0.7
+          # 全局输出上限=4000：max_tokens 只是上限、模型写到自然结束即停，短调用实际输出不变；
+          # 必须足够大以防 R8b report-analysis 的长 JSON（六维点评+分级简历建议≈2~3k token）被截断成非法 JSON
+          # 导致真实模式静默回退离线（2026-09-05 真调冒烟实测 1500 会截断，见 docs/07 §7/§10）。
+          max-tokens: 4000
+
+server:
+  port: 8080
+  shutdown: graceful
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+ai:
+  # true=离线引擎（默认，无 DeepSeek key 也可全链路演示）；false=真实 DeepSeek，失败自动回退离线。
+  # 本机真实模式由 application-local.yml（gitignore，ai.mock-enabled:false + 密钥）在 local profile 下覆盖启用。
+  mock-enabled: ${AI_MOCK_ENABLED:true}
+  cost:
+    enabled: true
+    daily-limit-yuan: 2.0            # 每日模型预算（元），超限自动回落离线引擎
+    input-price-per-million: 2.0     # 近似单价：¥/1M tokens（docs/07 §6 说明按官网核对）
+    output-price-per-million: 8.0
+
+app:
+  jwt:
+    access-ttl-minutes: 120        # access 2h
+    refresh-ttl-days: 7            # refresh 7d
+    # secret 见 application-local.yml（长度 >= 32 字节）
+    public-paths:
+      - /api/auth/login
+      - /api/auth/register
+      - /api/auth/refresh
+      - /api/ping
+  cors:
+    allowed-origins: http://localhost:5173,http://127.0.0.1:5173,http://0.0.0.0:5173
+
+  ocr:
+    # JD 图片 OCR（Tesseract 随 tess4j 自带 Windows 原生库，无需系统安装）。
+    # datapath 指向含 eng/chi_sim.traineddata 的目录（backend/ocr-tessdata，由 docs/03 §OCR 步骤准备，已 gitignore）。
+    language: ${OCR_LANGUAGE:chi_sim+eng}
+    datapath: ${OCR_DATAPATH:./ocr-tessdata}
+  rag:
+    # R10 检索注入开关与实现选择（docs/07 §10/§11，2026-09-07 Qdrant 已落地启用）。
+    # 缺省值全在此，均可不配；committed 默认 provider=local（MySQL 余弦，CI/离线可用），
+    # 本机连真实 Qdrant 用环境变量覆盖：RAG_PROVIDER=qdrant QDRANT_URL=http://127.0.0.1:6333。
+    enabled: ${RAG_ENABLED:true}
+    provider: ${RAG_PROVIDER:local}       # local=现网默认(MySQL余弦) | qdrant=真实Qdrant镜像(不可用自动回退local)
+    embedding: ${RAG_EMBEDDING:hash}      # hash=确定性本地向量 | onnx-bge=预留升档（需模型，见 docs/07 §10）
+    top-k: 4                              # 检索注入最大命中块数
+    min-score: 0.0                        # 余弦阈值（0=语料非空即按 topK 注入）
+    dimension: 512                        # 向量维数（须与 text_chunks.embedding 一致，Qdrant 集合同维）
+    qdrant-url: ${QDRANT_URL:}            # provider=qdrant 时的服务地址（如 http://127.0.0.1:6333）
+
+logging:
+  level:
+    com.group5.interview: debug
+    org.hibernate.SQL: warn
