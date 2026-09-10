@@ -29,9 +29,4 @@ export JAVA_HOME="D:/生产实习Claude/jdk17"
 #   健康检查: http://localhost:8080/api/ping
 ```
 
-## 开发分工（docs/10 附录 C）
 
-- 后端：张帆、刘小娴
-- 前端：张美佳
-- Prompt/测试/验收：彭雅奇
-- 改动表或接口前，先改 `docs/04` / `docs/06` 再动手。
